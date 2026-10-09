@@ -269,6 +269,78 @@ def combine_trendyol_label_with_custom(
         return custom_sticker_img
 
 
+def _load_bold_font(size: int):
+    """Kalın font yükle (Windows Arial Bold → Linux DejaVu/Liberation → default)."""
+    for name in (
+        "arialbd.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    ):
+        try:
+            return ImageFont.truetype(name, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def _brand_ribbon_strip(length: int, band: int, text: str = "PENALTI DENİM") -> Image.Image:
+    """Yatay bir marka şeridi: 'PENALTI DENİM • PENALTI DENİM • ...'
+    Tekrar sayısı şeride sığacak kadar seçilir ve aralar eşit dağıtılır (iki uç simetrik)."""
+    strip = Image.new('RGB', (max(length, 1), band), 'white')
+    d = ImageDraw.Draw(strip)
+    font_size = max(int(band * 0.62), 8)
+    font = _load_bold_font(font_size)
+    unit_w = d.textlength(text, font=font)
+    min_gap = font_size * 1.4  # ayraç (•) + nefes payı
+    count = max(1, int((length + min_gap) // (unit_w + min_gap)))
+    # Tek kelime bile sığmıyorsa fontu küçült
+    while count == 1 and unit_w > length - 4 and font_size > 8:
+        font_size -= 1
+        font = _load_bold_font(font_size)
+        unit_w = d.textlength(text, font=font)
+    slot = length / count
+    bbox = d.textbbox((0, 0), text, font=font)
+    text_y = (band - (bbox[3] - bbox[1])) / 2 - bbox[1]
+    dot_r = max(band // 9, 2)
+    for i in range(count):
+        x = i * slot + (slot - unit_w) / 2
+        d.text((x, text_y), text, fill='black', font=font)
+        if i > 0:  # birimler arasına ayraç nokta
+            cx, cy = i * slot, band / 2
+            d.ellipse([cx - dot_r, cy - dot_r, cx + dot_r, cy + dot_r], fill='black')
+    return strip
+
+
+def _frame_with_brand_ribbon(content: Image.Image, band: int = 26, inner_pad: int = 12) -> Image.Image:
+    """İçeriği (dikey kargo barkodu) saat yönünde dönen bir 'PENALTI DENİM •' yazı
+    şeridiyle çerçeveler: üst soldan sağa, sağ yukarıdan aşağı, alt sağdan sola,
+    sol aşağıdan yukarı okunur. Köşelerde dolu kare süs, dış ve iç ince çizgi."""
+    cw, ch = content.size
+    inner_w = cw + inner_pad * 2
+    inner_h = ch + inner_pad * 2
+    W, H = inner_w + band * 2, inner_h + band * 2
+    framed = Image.new('RGB', (W, H), 'white')
+    framed.paste(content, (band + inner_pad, band + inner_pad))
+
+    top = _brand_ribbon_strip(inner_w, band)
+    side = _brand_ribbon_strip(inner_h, band)
+    framed.paste(top, (band, 0))                                   # üst: soldan sağa
+    framed.paste(side.rotate(-90, expand=True), (band + inner_w, band))  # sağ: yukarıdan aşağı
+    framed.paste(top.rotate(180), (band, band + inner_h))          # alt: sağdan sola
+    framed.paste(side.rotate(90, expand=True), (0, band))          # sol: aşağıdan yukarı
+
+    fd = ImageDraw.Draw(framed)
+    fd.rectangle([(0, 0), (W - 1, H - 1)], outline='black', width=3)  # dış çerçeve
+    fd.rectangle([(band, band), (band + inner_w - 1, band + inner_h - 1)], outline='black', width=2)  # iç çerçeve
+    # Köşe süsleri: dolu kare + ortasında beyaz elmas
+    for cx, cy in ((0, 0), (W - band, 0), (0, H - band), (W - band, H - band)):
+        fd.rectangle([(cx, cy), (cx + band - 1, cy + band - 1)], fill='black')
+        m, r = band / 2, band / 4
+        fd.polygon([(cx + m, cy + m - r), (cx + m + r, cy + m), (cx + m, cy + m + r), (cx + m - r, cy + m)], fill='white')
+    return framed
+
+
 def generate_shipping_label_sticker(
     order_id: str,
     items: List[OrderItem],
@@ -388,35 +460,18 @@ def generate_shipping_label_sticker(
                 elif vertical_barcode_img.mode != 'RGB':
                     vertical_barcode_img = vertical_barcode_img.convert('RGB')
                 
-                # Kare içine al (barkod etrafında kare çerçeve)
-                vertical_barcode_img_width, vertical_barcode_img_height = vertical_barcode_img.size
-                # Kare boyutları (barkod + padding) - 100x100mm için optimize
-                square_padding = 10  # Kare içindeki padding
-                square_width = vertical_barcode_img_width + (square_padding * 2)
-                square_height = vertical_barcode_img_height + (square_padding * 2)
-                
-                # Kare görseli oluştur
-                square_img = Image.new('RGB', (square_width, square_height), 'white')
-                square_draw = ImageDraw.Draw(square_img)
-                # Kare çerçeve çiz (kalın çizgi)
-                square_draw.rectangle(
-                    [(0, 0), (square_width - 1, square_height - 1)],
-                    outline='black',
-                    width=3
-                )
-                # Barkodu kare içine yapıştır (ortalanmış)
-                barcode_x_in_square = square_padding
-                barcode_y_in_square = square_padding
-                square_img.paste(vertical_barcode_img, (barcode_x_in_square, barcode_y_in_square))
-                
+                # Barkodun etrafına "PENALTI DENİM •" yazılı marka şeridi çerçeve
+                square_img = _frame_with_brand_ribbon(vertical_barcode_img)
+                square_width, square_height = square_img.size
+
                 # Sağ köşeye ortalı bir şekilde yerleştir (100x100mm için optimize)
-                square_x = width - square_width - 20  # Sağdan 20px içeride
+                square_x = width - square_width - 16  # Sağdan 16px içeride
                 square_y = (height - square_height) // 2  # Dikey olarak tam ortada
                 # Eğer üst veya alt taşıyorsa, içeride tut
-                if square_y < 50:
-                    square_y = 50  # Üstten minimum 50px
-                if square_y + square_height > height - 50:
-                    square_y = height - square_height - 50  # Alttan minimum 50px
+                if square_y < 20:
+                    square_y = 20
+                if square_y + square_height > height - 20:
+                    square_y = height - square_height - 20
                 img.paste(square_img, (square_x, square_y))
                 
                 # Sol içerik genişliğini dikey barkodun konumuna göre güncelle (çakışmayı önlemek için)
