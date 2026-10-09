@@ -285,56 +285,53 @@ def _load_bold_font(size: int):
 
 
 def _brand_ribbon_strip(length: int, band: int, text: str = "PENALTI DENİM") -> Image.Image:
-    """Yatay bir marka şeridi: '- PENALTI DENİM - PENALTI DENİM - ... -'
+    """Yatay marka şeridi: siyah bant üzerine beyaz '- PENALTI DENİM - PENALTI DENİM -'.
     Tekrar sayısı şeride sığacak kadar seçilir; tireler ve yazılar eşit aralıkla dağıtılır."""
-    strip = Image.new('RGB', (max(length, 1), band), 'white')
+    strip = Image.new('RGB', (max(length, 1), band), 'black')
     d = ImageDraw.Draw(strip)
-    font_size = max(int(band * 0.6), 8)
+    font_size = max(int(band * 0.58), 8)
     font = _load_bold_font(font_size)
     unit_w = d.textlength(text, font=font)
-    min_gap = font_size * 1.6  # tire + iki yanında nefes payı
+    min_gap = font_size * 1.8  # tire + iki yanında nefes payı
     count = max(1, int((length - min_gap) // (unit_w + min_gap)))
     gap = (length - count * unit_w) / (count + 1)
     bbox = d.textbbox((0, 0), text, font=font)
     text_y = (band - (bbox[3] - bbox[1])) / 2 - bbox[1]
-    dash_half = max(font_size * 0.3, 3)
-    dash_th = max(band // 12, 2)
+    dash_half = max(font_size * 0.35, 3)
+    dash_th = max(band // 10, 2)
     cy = band / 2
     for k in range(count + 1):
-        # k. tire: k. boşluğun ortasında
-        cx = k * (gap + unit_w) + gap / 2
-        d.rectangle([cx - dash_half, cy - dash_th / 2, cx + dash_half, cy + dash_th / 2], fill='black')
+        cx = k * (gap + unit_w) + gap / 2  # k. tire: k. boşluğun ortasında
+        d.rectangle([cx - dash_half, cy - dash_th / 2, cx + dash_half, cy + dash_th / 2], fill='white')
         if k < count:
-            d.text((k * (gap + unit_w) + gap, text_y), text, fill='black', font=font)
+            d.text((k * (gap + unit_w) + gap, text_y), text, fill='white', font=font)
     return strip
 
 
-def _frame_with_brand_ribbon(content: Image.Image, band: int = 30, inner_pad: int = 0) -> Image.Image:
-    """İçeriği (etiketin tamamı) saat yönünde dönen bir 'PENALTI DENİM -' yazı
-    şeridiyle çerçeveler: üst soldan sağa, sağ yukarıdan aşağı, alt sağdan sola,
-    sol aşağıdan yukarı okunur. Köşelerde dolu kare süs, dış ve iç ince çizgi."""
+def _frame_with_brand_ribbon(content: Image.Image, band: int = 30) -> Image.Image:
+    """İçeriği (etiketin tamamı) siyah bir 'PENALTI DENİM -' marka şeridiyle çerçeveler.
+    Her kenar dışarıdan düz okunur: üst ve alt soldan sağa, sağ yukarıdan aşağı,
+    sol aşağıdan yukarı. Köşelerde beyaz elmas, şeridin içinde ince ikinci çizgi."""
     cw, ch = content.size
-    inner_w = cw + inner_pad * 2
-    inner_h = ch + inner_pad * 2
-    W, H = inner_w + band * 2, inner_h + band * 2
-    framed = Image.new('RGB', (W, H), 'white')
-    framed.paste(content, (band + inner_pad, band + inner_pad))
+    W, H = cw + band * 2, ch + band * 2
+    framed = Image.new('RGB', (W, H), 'black')
+    framed.paste(content, (band, band))
 
-    top = _brand_ribbon_strip(inner_w, band)
-    side = _brand_ribbon_strip(inner_h, band)
-    framed.paste(top, (band, 0))                                   # üst: soldan sağa
-    framed.paste(side.rotate(-90, expand=True), (band + inner_w, band))  # sağ: yukarıdan aşağı
-    framed.paste(top.rotate(180), (band, band + inner_h))          # alt: sağdan sola
-    framed.paste(side.rotate(90, expand=True), (0, band))          # sol: aşağıdan yukarı
+    top = _brand_ribbon_strip(cw, band)
+    side = _brand_ribbon_strip(ch, band)
+    framed.paste(top, (band, 0))                                  # üst
+    framed.paste(top, (band, band + ch))                          # alt
+    framed.paste(side.rotate(-90, expand=True), (band + cw, band))  # sağ
+    framed.paste(side.rotate(90, expand=True), (0, band))         # sol
 
     fd = ImageDraw.Draw(framed)
-    fd.rectangle([(0, 0), (W - 1, H - 1)], outline='black', width=3)  # dış çerçeve
-    fd.rectangle([(band, band), (band + inner_w - 1, band + inner_h - 1)], outline='black', width=2)  # iç çerçeve
-    # Köşe süsleri: dolu kare + ortasında beyaz elmas
+    # Köşe süsü: beyaz elmas
+    m, r = band / 2, band / 4
     for cx, cy in ((0, 0), (W - band, 0), (0, H - band), (W - band, H - band)):
-        fd.rectangle([(cx, cy), (cx + band - 1, cy + band - 1)], fill='black')
-        m, r = band / 2, band / 4
         fd.polygon([(cx + m, cy + m - r), (cx + m + r, cy + m), (cx + m, cy + m + r), (cx + m - r, cy + m)], fill='white')
+    # Şeridin hemen içinde ince ikinci çizgi (çift çerçeve görünümü)
+    gap = 5
+    fd.rectangle([(band + gap, band + gap), (W - band - gap - 1, H - band - gap - 1)], outline='black', width=2)
     return framed
 
 
@@ -401,11 +398,9 @@ def generate_shipping_label_sticker(
             small_font = ImageFont.load_default()
             tiny_font = ImageFont.load_default()
         
-        y_position = 20
-        padding = 25
-        # Sağ tarafta dikey barkod için alan ayır (100x100mm için optimize)
-        right_barcode_area = 200  # Sağ tarafta dikey barkod için ayrılan alan (kare + padding dahil)
-        left_content_width = width - right_barcode_area - padding  # Sol içerik için maksimum genişlik
+        padding = 30  # iç çerçeve çizgisinden nefes payı
+        y_position = 22
+        left_content_width = width - padding  # içerik tüm genişliği kullanır (dikey barkod yok)
 
         def _clamp_to_width(text: str, font, max_width: int) -> str:
             """Tek satırı ÖLÇÜLEN genişliğe göre kısalt (sabit karakter sayısı DEĞİL).
@@ -416,93 +411,6 @@ def generate_shipping_label_sticker(
             while len(clamped) > 1 and draw.textlength(clamped + '…', font=font) > max_width:
                 clamped = clamped[:-1]
             return clamped.rstrip() + '…'
-        
-        # Sağ köşede dikey kargo barkodu (barkod cihazı için - uzunlamasına dikey, ortalı)
-        if cargo_barcode:
-            cargo_barcode_str = str(cargo_barcode).strip()
-            try:
-                # Yatay barkod oluştur (sonra dikey yapacağız)
-                code128 = barcode.get_barcode_class('code128')
-                writer = ImageWriter()
-                barcode_instance = code128(cargo_barcode_str, writer=writer)
-                
-                barcode_buffer = BytesIO()
-                try:
-                    barcode_instance.write(barcode_buffer, options={'write_text': False})
-                except:
-                    barcode_instance.write(barcode_buffer)
-                barcode_buffer.seek(0)
-                horizontal_barcode_img = Image.open(barcode_buffer)
-                
-                # Barkod görselinden metin kısmını kaldır
-                if horizontal_barcode_img.height > 0:
-                    estimated_text_height = int(horizontal_barcode_img.height * 0.30)
-                    barcode_only_height = horizontal_barcode_img.height - estimated_text_height
-                    if barcode_only_height < 50:
-                        barcode_only_height = int(horizontal_barcode_img.height * 0.70)
-                    horizontal_barcode_img = horizontal_barcode_img.crop((0, 0, horizontal_barcode_img.width, barcode_only_height))
-                
-                # Uzunlamasına dikey barkod boyutları (100x100mm için optimize)
-                # Genişlik: barkod çizgilerinin genişliği
-                # Yükseklik: barkod çizgilerinin uzunluğu (etiket yüksekliğine uygun)
-                vertical_barcode_width = 120  # Dikey genişlik (100x100mm için optimize)
-                # Yüksekliği etiket yüksekliğine göre ayarla (üst ve alt padding için alan bırak)
-                max_vertical_height = height - 80  # Üst ve alt için 80px boşluk
-                vertical_barcode_height = min(450, max_vertical_height)  # Maksimum 450px veya etiket yüksekliğine göre
-                
-                # Önce boyutlandır, sonra döndür (uzunlamasına dikey için)
-                horizontal_barcode_img = horizontal_barcode_img.resize((vertical_barcode_height, vertical_barcode_width), Image.Resampling.LANCZOS)
-                
-                # Barkodu 90 derece saat yönü tersi döndür (uzunlamasına dikey - çizgiler dikey olacak)
-                vertical_barcode_img = horizontal_barcode_img.rotate(-90, expand=True)
-                
-                # RGB'ye çevir
-                if vertical_barcode_img.mode == 'RGBA':
-                    barcode_rgb = Image.new('RGB', vertical_barcode_img.size, 'white')
-                    barcode_rgb.paste(vertical_barcode_img, mask=vertical_barcode_img.split()[3] if len(vertical_barcode_img.split()) == 4 else None)
-                    vertical_barcode_img = barcode_rgb
-                elif vertical_barcode_img.mode != 'RGB':
-                    vertical_barcode_img = vertical_barcode_img.convert('RGB')
-                
-                # Kare içine al (barkod etrafında kare çerçeve)
-                vertical_barcode_img_width, vertical_barcode_img_height = vertical_barcode_img.size
-                # Kare boyutları (barkod + padding) - 100x100mm için optimize
-                square_padding = 10  # Kare içindeki padding
-                square_width = vertical_barcode_img_width + (square_padding * 2)
-                square_height = vertical_barcode_img_height + (square_padding * 2)
-                
-                # Kare görseli oluştur
-                square_img = Image.new('RGB', (square_width, square_height), 'white')
-                square_draw = ImageDraw.Draw(square_img)
-                # Kare çerçeve çiz (kalın çizgi)
-                square_draw.rectangle(
-                    [(0, 0), (square_width - 1, square_height - 1)],
-                    outline='black',
-                    width=3
-                )
-                # Barkodu kare içine yapıştır (ortalanmış)
-                barcode_x_in_square = square_padding
-                barcode_y_in_square = square_padding
-                square_img.paste(vertical_barcode_img, (barcode_x_in_square, barcode_y_in_square))
-                
-                # Sağ köşeye ortalı bir şekilde yerleştir (100x100mm için optimize)
-                square_x = width - square_width - 20  # Sağdan 20px içeride
-                square_y = (height - square_height) // 2  # Dikey olarak tam ortada
-                # Eğer üst veya alt taşıyorsa, içeride tut
-                if square_y < 50:
-                    square_y = 50  # Üstten minimum 50px
-                if square_y + square_height > height - 50:
-                    square_y = height - square_height - 50  # Alttan minimum 50px
-                img.paste(square_img, (square_x, square_y))
-                
-                # Sol içerik genişliğini dikey barkodun konumuna göre güncelle (çakışmayı önlemek için)
-                left_content_width = min(left_content_width, square_x - padding - 30)  # Dikey barkodun solundan 30px önce bit
-                
-                # Numara yazılmayacak - sadece barkod (kare içinde)
-                
-            except Exception as e:
-                import sys
-                print(f"Dikey kargo barkodu oluşturma hatası: {str(e)}", file=sys.stderr)
         
         # Üst kısım: Sipariş bilgisi (büyük ve belirgin)
         draw.text((padding, y_position), f"Sipariş No: {order_id}", fill='black', font=header_font)
@@ -683,7 +591,8 @@ def generate_shipping_label_sticker(
                     cargo_text = cargo_text[:-1]
                 cargo_text = cargo_text.rstrip() + '…'
             draw.text((padding, y_position), cargo_text, fill='black', font=cargo_font)
-            y_position += 25
+            cargo_bbox = draw.textbbox((padding, y_position), cargo_text, font=cargo_font)
+            y_position = cargo_bbox[3] + 10  # yazı yüksekliğine göre, barkoda yapışmasın
         else:
             # Eğer kargo firması bilgisi yoksa, varsayılan olarak "KARGO" yaz
             # Veya hiçbir şey yazma (kullanıcı tercihine göre)
@@ -726,7 +635,7 @@ def generate_shipping_label_sticker(
                 
                 # Barkod boyutunu ayarla (100x100mm için optimize)
                 # Sol köşeye dayalı olarak yerleştirilecek, genişlik sınırlı
-                barcode_width = min(left_content_width - padding, 500)  # 100x100mm için maksimum 500px genişlik
+                barcode_width = min(left_content_width - padding, 600)  # tüm genişlik, en fazla 600px
                 original_width = barcode_img.width
                 original_height = barcode_img.height
                 if original_width > 0:
@@ -748,7 +657,8 @@ def generate_shipping_label_sticker(
                     barcode_img = barcode_img.convert('RGB')
                 
                 # Barkod görselini ekle (merkeze)
-                img.paste(barcode_img, (padding, y_position))
+                barcode_x = (width - barcode_width) // 2
+                img.paste(barcode_img, (barcode_x, y_position))
                 
                 # Barkod görselinin altına tam numarayı yazdır (büyük font, merkez)
                 y_position += barcode_height + 6
@@ -764,7 +674,7 @@ def generate_shipping_label_sticker(
                 num_text = cargo_barcode_str
                 bbox = draw.textbbox((0, 0), num_text, font=num_font)
                 text_width = bbox[2] - bbox[0]
-                num_x = padding + (barcode_width - text_width) // 2
+                num_x = barcode_x + (barcode_width - text_width) // 2
                 draw.text((num_x, y_position), num_text, fill='black', font=num_font)
                 y_position += 25
                 
@@ -785,7 +695,7 @@ def generate_shipping_label_sticker(
         max_product_width = left_content_width - (padding + 8) - 8
         max_detail_width = left_content_width - (padding + 12) - 8
         # Sol alttaki QR koda taşmasın: sığan kadar ürün (en fazla 4) yaz
-        qr_top = height - 120 - 38  # QR (120) + altındaki site yazısı + iç çerçeveden pay
+        qr_top = height - 120 - 22  # QR (120) + iç çerçeveden pay
         max_items = 4
         while max_items > 1 and y_position + max_items * 48 + (20 if len(items) > max_items else 0) > qr_top - 6:
             max_items -= 1
@@ -827,23 +737,21 @@ def generate_shipping_label_sticker(
         qr_y = qr_top
         img.paste(qr_img, (qr_x, qr_y))
         
-        # Website adını QR kodun yanına veya altına yaz (siyah, büyük)
         website_text = "penaltıdenim.com"
         try:
-            website_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 20)
+            website_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 24)
         except:
             try:
-                website_font = ImageFont.truetype("arial.ttf", 20)
+                website_font = ImageFont.truetype("arial.ttf", 24)
             except:
                 website_font = small_font
         
-        # Website adını QR kodun altına veya yanına yaz
-        website_y = qr_y + qr_size + 5
+        # Website adını QR kodun sağına, dikeyde ortalı yaz
         bbox = draw.textbbox((0, 0), website_text, font=website_font)
-        text_width = bbox[2] - bbox[0]
-        website_x = qr_x + (qr_size - text_width) // 2  # QR kodun altında ortalanmış
+        website_x = qr_x + qr_size + 14
+        website_y = qr_y + (qr_size - (bbox[3] - bbox[1])) // 2 - bbox[1]
         draw.text((website_x, website_y), website_text, fill='black', font=website_font)
-        
+
         # Etiketin dış kenarına "PENALTI DENİM - PENALTI DENİM -" marka şeridi
         framed = _frame_with_brand_ribbon(img, band=ribbon_band)
         img = Image.new('RGB', (full_width, full_height), 'white')
