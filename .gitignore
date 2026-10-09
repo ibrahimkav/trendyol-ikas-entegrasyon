@@ -1,0 +1,104 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+.claude/settings.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Build
+frontend/dist/
+frontend/build/
+backend/dist/
+
+# Logs
+*.log
+logs/
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ============================================================
+# GUVENLIK -- 2026-10-10, ilk GitHub push oncesi eklendi.
+# Asagidakiler GERCEK satici sirlari ve GERCEK musteri verisi
+# icerir. Bu bloktan hicbir satiri kaldirmayin.
+# ============================================================
+
+# .env YEDEKLERI -- canli Trendyol/ikas anahtarlari, JWT ve
+# sifreleme anahtarlari. Ustteki ".env" kurali bunlari KAPSAMIYOR.
+.env.bak*
+.env.*.bak*
+*.env.bak*
+
+# VERITABANI YEDEKLERI -- gercek musteri adi/adresi/telefonu ve
+# siparis gecmisi. Ustteki "*.db" kurali .db.bak-* uzantisini
+# KAPSAMIYOR (bu yuzden ayrica yaziliyor).
+*.db.bak*
+*.db-wal
+*.db-shm
+*.sqlite3
+
+# Ajan/orkestrasyon calisma alani: konusma dokumlerine, maliyet
+# defterine ve is analizine ait veri. Kod degil.
+hive/
+palace/
+roster-backups/
+.claude/
+graphify-out/
+
+# Gecici/uretilmis
+*.bak
+*.corrupt*
+
+# Harness/ajan durum dosyalari -- kod degil
+roster.json
+hallways.json
+
+# Gercek is verisi: Trendyol urun dokumu (musteri/urun verisi)
+*.xlsx
+*.xls
+*.csv

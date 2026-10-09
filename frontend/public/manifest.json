@@ -1,0 +1,63 @@
+{
+  "name": "Trendyol AI Satıcı Asistanı",
+  "short_name": "Trendyol AI",
+  "description": "Yapay zeka destekli Trendyol satış yönetim sistemi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#F27A1A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Bildirimler",
+      "short_name": "Bildirimler",
+      "description": "Bildirimleri görüntüle",
+      "url": "/notifications",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Otomatik Barkod",
+      "short_name": "Barkod",
+      "description": "Otomatik barkod oluştur",
+      "url": "/auto-barcode",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+

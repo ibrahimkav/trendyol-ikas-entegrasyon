@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    @apply text-slate-900;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+@layer components {
+  .app-main {
+    @apply mx-auto w-full max-w-6xl px-4 py-6 sm:px-5 lg:px-8 lg:py-8;
+  }
+
+  .page-header {
+    @apply mb-6 border-b border-slate-200/80 pb-5;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl;
+  }
+
+  .page-subtitle {
+    @apply mt-1.5 max-w-2xl text-sm text-slate-600 sm:text-base;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md;
+  }
+
+  .card-hover {
+    @apply transition-shadow duration-200 hover:shadow-md;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-trendyol-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#e06f15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-trendyol-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-trendyol-primary focus-visible:ring-offset-2;
+  }
+
+  .stat-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md;
+  }
+
+  .dashboard-section-head {
+    @apply flex flex-col gap-2 border-b border-slate-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6;
+  }
+
+  .dashboard-section-title {
+    @apply text-lg font-semibold tracking-tight text-slate-900;
+  }
+
+  .dashboard-section-body {
+    @apply p-5 sm:p-6;
+  }
+
+  .dashboard-list-row {
+    @apply flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-4 transition hover:border-slate-200 hover:bg-slate-50;
+  }
+
+  .gradient-text {
+    @apply text-trendyol-primary;
+  }
+}
+
+
+
