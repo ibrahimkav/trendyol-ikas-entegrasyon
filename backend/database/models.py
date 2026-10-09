@@ -606,3 +606,49 @@ class AutomationRuleRecord(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
+
+
+class IkasOrder(Base):
+    """ikas'tan Excel/CSV ile içe aktarılan sipariş — Trendyol E-Faturam üzerinden
+    fatura kesmek için. ikas Start paketinde API olmadığından siparişler panelden
+    dışa aktarılan dosyayla gelir (bkz. utils/ikas_import.py).
+
+    data_json: dosyadan ayrıştırılan sipariş (müşteri/fatura bilgileri + satırlar).
+               Aynı sipariş tekrar yüklenirse YENİLENİR.
+    overrides_json: kullanıcının panelden elle düzelttiği fatura alanları (ör. eksik
+               TC/adres). Tekrar yüklemede KORUNUR, data_json'ın üzerine uygulanır.
+    status: 'pending' (fatura kesilmedi) | 'invoiced' | 'error'. Faturalanan sipariş
+            tekrar yüklemede değiştirilmez ve silinemez."""
+    __tablename__ = "ikas_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False, index=True)
+    order_number = Column(String, nullable=False)
+    order_date = Column(String)  # dosyadaki ham tarih metni (formatı ikas'a bağlı)
+    data_json = Column(Text, nullable=False)
+    overrides_json = Column(Text)
+    status = Column(String, nullable=False, default="pending")
+    invoice_number = Column(String)
+    invoice_uuid = Column(String)
+    invoice_date = Column(DateTime)
+    invoice_error = Column(Text)
+    imported_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('store_id', 'order_number', name='uq_store_ikas_order'),
+        Index('idx_ikas_order_store_status', 'store_id', 'status'),
+    )
+
+
+class InvoiceSettings(Base):
+    """Mağaza bazında fatura ayarları (ikas → E-Faturam). KDV oranları muhasebeciyle
+    teyit edilmeli; varsayılanlar hazır giyim (%10) ve kargo hizmeti (%20)."""
+    __tablename__ = "invoice_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False, unique=True, index=True)
+    product_vat_rate = Column(Float, nullable=False, default=10.0)
+    shipping_vat_rate = Column(Float, nullable=False, default=20.0)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   BarChart3,
   Calculator,
+  FileText,
   LayoutDashboard,
   Megaphone,
   Percent,
@@ -77,6 +78,7 @@ export const sidebarNav: NavEntry[] = [
 export const operationalNav: NavLeaf[] = [
   { kind: 'leaf', id: 'auto-barcode', label: 'Barkod', path: '/auto-barcode', icon: Zap },
   { kind: 'leaf', id: 'order-scanner', label: 'Sipariş Okut', path: '/order-scanner', icon: QrCode },
+  { kind: 'leaf', id: 'ikas-invoices', label: 'ikas Faturaları', path: '/ikas-invoices', icon: FileText },
 ]
 
 /**

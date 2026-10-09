@@ -12,7 +12,7 @@ import math
 import os
 from dotenv import load_dotenv
 
-from routers import barcode, pricing, orders, analytics, notifications, cargo, customers, customer_qa, inventory, products, reports, automation, financial, bulk_operations, competitor_analysis, sync, returns, campaigns, price_history, export_import, images, seo_optimization, customer_segmentation, product_images, size_chart, auth, settings as settings_router, dashboard
+from routers import barcode, pricing, orders, analytics, notifications, cargo, customers, customer_qa, inventory, products, reports, automation, financial, bulk_operations, competitor_analysis, sync, returns, campaigns, price_history, export_import, images, seo_optimization, customer_segmentation, product_images, size_chart, auth, settings as settings_router, dashboard, invoices
 import asyncio
 from contextlib import asynccontextmanager
 
@@ -155,6 +155,7 @@ app.include_router(size_chart.router, prefix="/api/size-chart", tags=["Beden Tab
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["Ayarlar"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
+app.include_router(invoices.router, prefix="/api/invoices", tags=["ikas Fatura"])
 
 
 @app.get("/")

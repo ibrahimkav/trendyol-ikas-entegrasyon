@@ -20,6 +20,7 @@ const CategoryProfitabilityReport = lazy(() => import('./pages/reports/CategoryP
 const ReturnLossReport = lazy(() => import('./pages/reports/ReturnLossReport'))
 const WarningPage = lazy(() => import('./pages/WarningPage'))
 const WhatsNew = lazy(() => import('./pages/WhatsNew')) // Yenilikler — statik changelog (Oscar, w2c)
+const IkasInvoices = lazy(() => import('./pages/IkasInvoices')) // ikas siparişleri → Trendyol E-Faturam faturası
 // Hakediş & Desi + Kampanya×3 (Ryan, w2c-ryan) — CampaignTabs 3 kampanya route'u arası gezinir
 const EntitlementReconciliation = lazy(() => import('./pages/EntitlementReconciliation'))
 const BuildYourCampaign = lazy(() => import('./pages/campaigns/BuildYourCampaign'))
@@ -115,6 +116,7 @@ function AppRoutes() {
             {/* "Diğer Araçlar" flyout — 16 KEEP-HIDDEN sayfa (+ Notifications topbar zili = 17) */}
             <Route path="/auto-barcode" element={<AutoBarcodeGenerator />} />
             <Route path="/order-scanner" element={<OrderScanner />} />
+            <Route path="/ikas-invoices" element={<IkasInvoices />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/cargo" element={<CargoTracking />} />
             <Route path="/customers" element={<Customers />} />
