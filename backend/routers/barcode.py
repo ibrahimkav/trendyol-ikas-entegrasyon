@@ -2,7 +2,7 @@
 Barkod Sistemi Router
 Akıllı barkod oluşturma ve okuma işlemleri
 """
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
@@ -17,6 +17,7 @@ import json
 from PIL import Image, ImageDraw, ImageFont
 import os
 import uuid
+from utils.order_grouping import sort_orders_by_product, product_summary
 import csv
 import io
 from fastapi.responses import StreamingResponse
@@ -1151,6 +1152,8 @@ async def auto_generate_barcodes(
 async def get_pending_orders_for_barcode():
     """
     Kargoya gönderilmesi gereken siparişleri listeler (barkod oluşturulmadan önce önizleme).
+    Her siparişe product_rank (aynı ürünler art arda sırası — toplu yazdırmayla aynı
+    sıralama) ve product_summary eklenir; ekran "Ürün" sıralamasında bunu kullanır.
     """
     import os
     import requests
@@ -1218,6 +1221,7 @@ async def get_pending_orders_for_barcode():
         orders = data.get("content", [])
         
         # Sadece kargoya hazır olanları filtrele
+        product_rank = {id(o): i for i, o in enumerate(sort_orders_by_product(orders))}
         ready_orders = []
         for o in orders:
             try:
@@ -1232,9 +1236,12 @@ async def get_pending_orders_for_barcode():
                         "status": status,
                         "total_price": float(o.get("totalPrice", o.get("totalPriceValue", 0)) or 0),
                         "item_count": len(lines),
+                        "product_rank": product_rank[id(o)],
+                        "product_summary": product_summary(o),
                         "items": [
                             {
                                 "product_name": line.get("productName", "Ürün"),
+                                "barcode": line.get("barcode") or "",
                                 "quantity": int(line.get("quantity", 0) or 0),
                                 "price": float(line.get("price", 0) or 0)
                             }
@@ -1394,12 +1401,15 @@ async def get_barcode_stats(
 
 @router.get("/bulk-print")
 async def bulk_print_labels(
+    sort: str = Query("product", pattern="^(product|default)$"),
     store: Store = Depends(get_current_store) if _db_available else None,
     db: Session = Depends(get_db) if _db_available else None
 ):
     """
     Kargoya gönderilmesi gereken tüm siparişlerin etiketlerini ayrı ayrı oluşturur.
     Her etiket ayrı bir görsel olarak döndürülür, böylece yazıcıya tek tek gönderilebilir.
+    sort=product (varsayılan): aynı ürünü içeren siparişler art arda gelir (kargo
+    hazırlığı kolaylığı, bkz. utils/order_grouping.py); sort=default: Trendyol'un sırası.
     w3-bulk-label-perstore: per-store credential (env DEĞİL) — bağlı değilse resolve_trendyol_creds 409 fırlatır.
     """
     import requests
@@ -1424,7 +1434,10 @@ async def bulk_print_labels(
                 status_code=404,
                 detail="Kargoya gönderilmesi gereken sipariş bulunamadı"
             )
-        
+
+        if sort == "product":
+            all_orders = sort_orders_by_product(all_orders)
+
         # Her sipariş için etiket oluştur (ayrı ayrı)
         labels = []
         
@@ -1516,6 +1529,7 @@ async def bulk_print_labels(
                 labels.append({
                     "order_id": order_id,
                     "order_date": _format_trendyol_date(order.get("orderDate", "")),
+                    "product_summary": product_summary(order),
                     "label": shipping_label_base64
                 })
                 
@@ -2527,6 +2541,7 @@ async def import_barcode_history(
 
 @router.get("/bulk-print-trendyol")
 async def bulk_print_trendyol_labels(
+    sort: str = Query("product", pattern="^(product|default)$"),
     store: Store = Depends(get_current_store) if _db_available else None,
     db: Session = Depends(get_db) if _db_available else None
 ):
@@ -2534,6 +2549,8 @@ async def bulk_print_trendyol_labels(
     Kargoya gönderilmesi gereken tüm siparişlerin Trendyol kargo etiketlerini toplu çıkarır.
     Sadece Trendyol'un kendi kargo etiketlerini döndürür (ekstra etiket eklemeden).
     Per-store: bu mağazanın kendi bağlı Trendyol kimliğiyle çalışır (env fallback yok).
+    sort=product (varsayılan): aynı ürünü içeren siparişler art arda gelir (kargo
+    hazırlığı kolaylığı, bkz. utils/order_grouping.py); sort=default: Trendyol'un sırası.
     """
     import base64
     from utils.store_trendyol import resolve_trendyol_creds, fetch_orders, fetch_common_label
@@ -2562,6 +2579,9 @@ async def bulk_print_trendyol_labels(
             "errors": [],
             "error_count": 0
         }
+
+    if sort == "product":
+        all_orders = sort_orders_by_product(all_orders)
 
     # Her sipariş için Trendyol kargo etiketini çek
     labels = []
@@ -2603,6 +2623,7 @@ async def bulk_print_trendyol_labels(
                     "order_date": _format_trendyol_date(order.get("orderDate", "")),
                     "label": f"data:{content_type};base64,{label_base64}",
                     "content_type": content_type,
+                    "product_summary": product_summary(order),
                     "cargo_tracking_number": cargo_tracking_number,
                     "cargo_company": (
                         order.get("cargoProviderName") or

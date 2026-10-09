@@ -11,11 +11,27 @@ interface PendingOrder {
   status: string
   total_price: number
   item_count: number
+  /** Aynı ürünler art arda sırası (backend utils/order_grouping.py — toplu yazdırmayla aynı) */
+  product_rank?: number
+  product_summary?: string
   items: Array<{
     product_name: string
+    barcode?: string
     quantity: number
     price: number
   }>
+}
+
+type BulkLabel = { order_id: string, order_date: string, label: string, product_summary?: string }
+
+const GROUP_BY_PRODUCT_KEY = 'barcode_group_by_product'
+
+function readGroupByProduct(): boolean {
+  try {
+    return localStorage.getItem(GROUP_BY_PRODUCT_KEY) !== '0'
+  } catch {
+    return true
+  }
 }
 
 interface GeneratedBarcode {
@@ -91,7 +107,9 @@ export default function AutoBarcodeGenerator() {
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [bulkPrinting, setBulkPrinting] = useState(false)
-  const [bulkLabels, setBulkLabels] = useState<Array<{order_id: string, order_date: string, label: string}>>([])
+  const [bulkLabels, setBulkLabels] = useState<BulkLabel[]>([])
+  // Toplu yazdırmada aynı ürünü içeren siparişler art arda gelsin (kargo hazırlığı kolaylığı)
+  const [groupByProduct, setGroupByProduct] = useState<boolean>(readGroupByProduct)
   const [error, setError] = useState<string | null>(null)
   const [selectedOrders, setSelectedOrders] = useState<string[]>([])
   const [printSettings, setPrintSettings] = useState({
@@ -109,8 +127,8 @@ export default function AutoBarcodeGenerator() {
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [sortBy, setSortBy] = useState<'date' | 'value' | 'items'>('date')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [sortBy, setSortBy] = useState<'product' | 'date' | 'value' | 'items'>(() => (readGroupByProduct() ? 'product' : 'date'))
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => (readGroupByProduct() ? 'asc' : 'desc'))
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(30) // saniye
   const [discountCode, setDiscountCode] = useState('TRENDYOL15')
@@ -382,7 +400,7 @@ export default function AutoBarcodeGenerator() {
     setBulkLabels([])
     setLastLabelBatchOrderIds(new Set())
     try {
-      const response = await apiClient.get('/barcode/bulk-print')
+      const response = await apiClient.get('/barcode/bulk-print', { params: { sort: groupByProduct ? 'product' : 'default' } })
       const labels = response.data.labels || []
       setBulkLabels(labels)
       setLastLabelBatchOrderIds(new Set(labels.map((l: { order_id: string }) => l.order_id)))
@@ -421,7 +439,7 @@ export default function AutoBarcodeGenerator() {
     setBulkLabelErrors([])
     setLastLabelBatchOrderIds(new Set())
     try {
-      const response = await apiClient.get('/barcode/bulk-print-trendyol')
+      const response = await apiClient.get('/barcode/bulk-print-trendyol', { params: { sort: groupByProduct ? 'product' : 'default' } })
       const labels = response.data.labels || []
       setBulkLabels(labels)
       setLastLabelBatchOrderIds(new Set(labels.map((l: { order_id: string }) => l.order_id)))
@@ -564,7 +582,9 @@ export default function AutoBarcodeGenerator() {
     })
     .sort((a, b) => {
       let comparison = 0
-      if (sortBy === 'date') {
+      if (sortBy === 'product') {
+        comparison = (a.product_rank ?? Number.MAX_SAFE_INTEGER) - (b.product_rank ?? Number.MAX_SAFE_INTEGER)
+      } else if (sortBy === 'date') {
         comparison = new Date(a.order_date).getTime() - new Date(b.order_date).getTime()
       } else if (sortBy === 'value') {
         comparison = a.total_price - b.total_price
@@ -823,6 +843,7 @@ export default function AutoBarcodeGenerator() {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="flex-1 px-3 py-2 border border-app-border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent"
               >
+                <option value="product">Ürün (aynılar art arda)</option>
                 <option value="date">Tarih</option>
                 <option value="value">Tutar</option>
                 <option value="items">Ürün Sayısı</option>
@@ -1006,7 +1027,31 @@ export default function AutoBarcodeGenerator() {
             />
           </label>
         </div>
-        <div className="mt-3 flex items-center space-x-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label
+            className="flex items-center gap-2 cursor-pointer rounded px-3 py-1 text-sm text-text-secondary hover:bg-app-surface-muted"
+            title="Toplu Yazdır ve Trendyol Kargo Etiketleri, aynı ürünü içeren siparişleri art arda çıkarır"
+          >
+            <input
+              type="checkbox"
+              checked={groupByProduct}
+              onChange={(e) => {
+                const on = e.target.checked
+                setGroupByProduct(on)
+                try {
+                  localStorage.setItem(GROUP_BY_PRODUCT_KEY, on ? '1' : '0')
+                } catch {
+                  // tarayıcı depolaması kapalıysa sadece bu oturum için geçerli
+                }
+                if (on) {
+                  setSortBy('product')
+                  setSortOrder('asc')
+                }
+              }}
+              className="rounded border-app-border"
+            />
+            Etiketlerde aynı ürünler art arda
+          </label>
           <button
             onClick={() => {
               if (selectedOrders.length === filteredAndSortedOrders.length) {
@@ -1121,6 +1166,11 @@ export default function AutoBarcodeGenerator() {
                           </span>
                         )}
                       </div>
+                      {order.product_summary && (
+                        <p className={`${viewMode === 'compact' ? 'text-xs' : 'text-sm'} text-text-primary truncate`} title={order.product_summary}>
+                          {order.product_summary}
+                        </p>
+                      )}
                       <p className={`${viewMode === 'compact' ? 'text-xs' : 'text-sm'} text-text-secondary`}>
                         {order.item_count} ürün • {order.total_price.toFixed(2)} TL
                         {viewMode === 'compact' && (
@@ -1274,7 +1324,15 @@ export default function AutoBarcodeGenerator() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {bulkLabels.map((label, index) => (
                   <div key={index} className="bg-app-surface p-3 rounded-lg border border-emerald-200 shadow-sm">
-                    <p className="text-xs font-semibold text-text-secondary mb-1">Sipariş: {label.order_id}</p>
+                    <p className="text-xs font-semibold text-text-secondary mb-1">
+                      <span className="mr-1 tabular-nums text-text-muted">{index + 1}.</span>
+                      Sipariş: {label.order_id}
+                    </p>
+                    {label.product_summary && (
+                      <p className="text-[11px] text-text-primary mb-1 line-clamp-2" title={label.product_summary}>
+                        {label.product_summary}
+                      </p>
+                    )}
                     {label.order_date ? (
                       <p className="text-[10px] text-text-muted mb-2 tabular-nums">{formatOrderDateTime(label.order_date)}</p>
                     ) : null}
