@@ -18,7 +18,9 @@ from sqlalchemy.orm import sessionmaker
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("JWT_SECRET", "test-suite-jwt-secret-not-for-prod-use-only")
-os.environ.setdefault("CREDENTIAL_ENCRYPTION_KEY", "test-suite-cred-key-not-for-prod-use-only")
+# Geçerli bir Fernet anahtarı olmalı (32 bayt url-safe base64) — eski değer geçersizdi ve
+# kimlik bilgisi kaydeden ilk testte ValueError veriyordu.
+os.environ.setdefault("CREDENTIAL_ENCRYPTION_KEY", "dGVzdC1zdWl0ZS1jcmVkLWtleS1ub3QtZm9yLXByb2Q=")
 
 
 @pytest.fixture()

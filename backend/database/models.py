@@ -652,3 +652,28 @@ class InvoiceSettings(Base):
     shipping_vat_rate = Column(Float, nullable=False, default=20.0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class StoreSettings(Base):
+    """Mağaza bazında genel ayarlar (Ayarlar sayfası: Kâr Hesaplama + Etiket & Barkod).
+    NULL alan = ayarlanmamış → utils/store_settings.py'deki varsayılan kullanılır
+    (StoreThreshold ile aynı desen). Daha önce bu değerler global/bellek-içi ya da
+    koda gömülüydü (kargo maliyeti, komisyon %10, etiket indirim kodu vb.)."""
+    __tablename__ = "store_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    store_id = Column(Integer, ForeignKey("stores.id"), nullable=False, unique=True, index=True)
+    # Kâr hesaplama
+    cargo_cost = Column(Float, nullable=True)  # ₺ / ürün
+    default_commission_rate = Column(Float, nullable=True)  # %
+    category_commissions_json = Column(Text, nullable=True)  # {"Jean": 21.5, ...}
+    # Kargo etiketi altı sticker
+    label_discount_code = Column(String, nullable=True)
+    label_discount_percent = Column(Integer, nullable=True)
+    label_website_url = Column(String, nullable=True)
+    label_website_text = Column(String, nullable=True)
+    label_brand_text = Column(String, nullable=True)
+    label_brand_ribbon_enabled = Column(Boolean, nullable=True)
+    label_group_by_product = Column(Boolean, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
